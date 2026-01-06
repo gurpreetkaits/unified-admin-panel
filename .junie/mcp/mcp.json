@@ -1,0 +1,20 @@
+{
+    "mcpServers": {
+        "laravel-boost": {
+            "command": "/opt/homebrew/Cellar/php@8.3/8.3.29/bin/php",
+            "args": [
+                "/Users/gurpreetkait/code/unifiedadmin/artisan",
+                "boost:mcp"
+            ]
+        },
+        "herd": {
+            "command": "/opt/homebrew/Cellar/php@8.3/8.3.29/bin/php",
+            "args": [
+                "/Applications/Herd.app/Contents/Resources/herd-mcp.phar"
+            ],
+            "env": {
+                "SITE_PATH": "/Users/gurpreetkait/code/unifiedadmin"
+            }
+        }
+    }
+}
