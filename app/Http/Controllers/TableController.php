@@ -203,6 +203,7 @@ class TableController extends Controller
         $foreignKeys = [];
         $hasDatabase = false;
         $tableExists = false;
+        $primaryKey = 'id';
 
         // Get query parameters
         $search = $request->input('search');
@@ -228,6 +229,7 @@ class TableController extends Controller
                     $columns = $dbService->getTableColumns($table)->toArray();
                     $data = $dbService->getTableData($table, 15, $search, $sortColumn, $sortDirection, $page);
                     $foreignKeys = $dbService->getTableForeignKeys($table);
+                    $primaryKey = $dbService->getPrimaryKey($table) ?? 'id';
                 }
             }
 
@@ -237,8 +239,6 @@ class TableController extends Controller
         if ($hasDatabase && ! $tableExists) {
             return response()->json(['error' => 'Table not found'], 404);
         }
-
-        $primaryKey = $dbService->getPrimaryKey($table) ?? 'id';
 
         return response()->json([
             'table' => $table,
