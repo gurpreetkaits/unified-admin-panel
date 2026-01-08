@@ -1,0 +1,86 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+      - staging
+
+jobs:
+  deploy-production:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    name: Deploy to Production
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Production Server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          script: |
+            cd /var/www/html/adminbase
+
+            # Reset any local changes to avoid conflicts during pull
+            git reset --hard
+            git pull origin main
+
+            # Install PHP dependencies
+            composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
+
+            # Install Node dependencies and build assets
+            npm ci
+            npm run build
+
+            # Laravel optimizations
+            php artisan migrate --force
+            php artisan config:cache
+            php artisan route:cache
+            php artisan view:cache
+            php artisan event:cache
+
+            echo "Production deployment completed successfully!"
+
+  deploy-staging:
+    if: github.ref == 'refs/heads/staging'
+    runs-on: ubuntu-latest
+    name: Deploy to Staging
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Staging Server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          script: |
+            cd /var/www/html/unified-admin-panel
+
+            # Reset any local changes to avoid conflicts during pull
+            git reset --hard
+            git pull origin staging
+
+            # Install PHP dependencies
+            composer install --no-interaction --prefer-dist --optimize-autoloader
+
+            # Install Node dependencies and build assets
+            npm ci
+            npm run build
+
+            # Laravel optimizations
+            php artisan migrate --force
+            php artisan config:cache
+            php artisan route:cache
+            php artisan view:cache
+            php artisan event:cache
+
+            echo "Staging deployment completed successfully!"
