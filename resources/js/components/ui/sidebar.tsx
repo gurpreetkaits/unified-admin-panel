@@ -24,11 +24,14 @@ import {
 } from "@/components/ui/tooltip"
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
+const SIDEBAR_WIDTH_COOKIE_NAME = "sidebar_width"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
 const SIDEBAR_WIDTH = "16rem"
 const SIDEBAR_WIDTH_MOBILE = "18rem"
 const SIDEBAR_WIDTH_ICON = "3rem"
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
+const SIDEBAR_MIN_WIDTH = 200
+const SIDEBAR_MAX_WIDTH = 480
 
 type SidebarContext = {
   state: "expanded" | "collapsed"
@@ -38,6 +41,10 @@ type SidebarContext = {
   setOpenMobile: (open: boolean) => void
   isMobile: boolean
   toggleSidebar: () => void
+  width: number
+  setWidth: (width: number) => void
+  isResizing: boolean
+  setIsResizing: (isResizing: boolean) => void
 }
 
 const SidebarContext = React.createContext<SidebarContext | null>(null)
@@ -66,6 +73,29 @@ function SidebarProvider({
 }) {
   const isMobile = useIsMobile()
   const [openMobile, setOpenMobile] = React.useState(false)
+  const [isResizing, setIsResizing] = React.useState(false)
+
+  // Initialize width from cookie or default
+  const [width, _setWidth] = React.useState(() => {
+    if (typeof document !== "undefined") {
+      const cookie = document.cookie
+        .split("; ")
+        .find((row) => row.startsWith(`${SIDEBAR_WIDTH_COOKIE_NAME}=`))
+      if (cookie) {
+        const value = parseInt(cookie.split("=")[1], 10)
+        if (!isNaN(value) && value >= SIDEBAR_MIN_WIDTH && value <= SIDEBAR_MAX_WIDTH) {
+          return value
+        }
+      }
+    }
+    return 256 // Default 16rem = 256px
+  })
+
+  const setWidth = React.useCallback((newWidth: number) => {
+    const clampedWidth = Math.max(SIDEBAR_MIN_WIDTH, Math.min(SIDEBAR_MAX_WIDTH, newWidth))
+    _setWidth(clampedWidth)
+    document.cookie = `${SIDEBAR_WIDTH_COOKIE_NAME}=${clampedWidth}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
+  }, [])
 
   // This is the internal state of the sidebar.
   // We use openProp and setOpenProp for control from outside the component.
@@ -120,8 +150,12 @@ function SidebarProvider({
       openMobile,
       setOpenMobile,
       toggleSidebar,
+      width,
+      setWidth,
+      isResizing,
+      setIsResizing,
     }),
-    [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar]
+    [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar, width, setWidth, isResizing, setIsResizing]
   )
 
   return (
@@ -129,15 +163,17 @@ function SidebarProvider({
       <TooltipProvider delayDuration={0}>
         <div
           data-slot="sidebar-wrapper"
+          data-resizing={isResizing ? "true" : undefined}
           style={
             {
-              "--sidebar-width": SIDEBAR_WIDTH,
+              "--sidebar-width": `${width}px`,
               "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
               ...style,
             } as React.CSSProperties
           }
           className={cn(
             "group/sidebar-wrapper has-data-[variant=inset]:bg-sidebar flex min-h-svh w-full",
+            isResizing && "select-none",
             className
           )}
           {...props}
@@ -292,6 +328,61 @@ function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
         "hover:group-data-[collapsible=offcanvas]:bg-sidebar group-data-[collapsible=offcanvas]:translate-x-0 group-data-[collapsible=offcanvas]:after:left-full",
         "[[data-side=left][data-collapsible=offcanvas]_&]:-right-2",
         "[[data-side=right][data-collapsible=offcanvas]_&]:-left-2",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+function SidebarResizeHandle({ className, ...props }: React.ComponentProps<"div">) {
+  const { width, setWidth, isResizing, setIsResizing, state } = useSidebar()
+  const startX = React.useRef(0)
+  const startWidth = React.useRef(0)
+
+  const handleMouseDown = React.useCallback(
+    (e: React.MouseEvent) => {
+      if (state === "collapsed") return
+      e.preventDefault()
+      startX.current = e.clientX
+      startWidth.current = width
+      setIsResizing(true)
+    },
+    [width, setIsResizing, state]
+  )
+
+  React.useEffect(() => {
+    if (!isResizing) return
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const delta = e.clientX - startX.current
+      setWidth(startWidth.current + delta)
+    }
+
+    const handleMouseUp = () => {
+      setIsResizing(false)
+    }
+
+    document.addEventListener("mousemove", handleMouseMove)
+    document.addEventListener("mouseup", handleMouseUp)
+
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove)
+      document.removeEventListener("mouseup", handleMouseUp)
+    }
+  }, [isResizing, setWidth, setIsResizing])
+
+  if (state === "collapsed") return null
+
+  return (
+    <div
+      data-sidebar="resize-handle"
+      data-slot="sidebar-resize-handle"
+      onMouseDown={handleMouseDown}
+      className={cn(
+        "absolute inset-y-0 right-0 z-20 hidden w-1 cursor-col-resize select-none transition-colors sm:block",
+        "hover:bg-sidebar-border",
+        isResizing && "bg-sidebar-border",
         className
       )}
       {...props}
@@ -715,6 +806,7 @@ export {
   SidebarMenuSubItem,
   SidebarProvider,
   SidebarRail,
+  SidebarResizeHandle,
   SidebarSeparator,
   SidebarTrigger,
   useSidebar,

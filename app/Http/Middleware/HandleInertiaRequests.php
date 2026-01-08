@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\Project;
+use App\Services\ProjectDatabaseService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -50,6 +51,17 @@ class HandleInertiaRequests extends Middleware
             $request->session()->put('current_project_id', $currentProject->id);
         }
 
+        // Get database tables for sidebar
+        $databaseTables = [];
+        if ($currentProject && $currentProject->hasDatabase()) {
+            $dbService = new ProjectDatabaseService($currentProject);
+            $result = $dbService->testConnection();
+            if ($result['connected']) {
+                $databaseTables = $dbService->getTables()->toArray();
+            }
+            $dbService->disconnect();
+        }
+
         return [
             ...parent::share($request),
             'name' => config('app.name'),
@@ -60,6 +72,7 @@ class HandleInertiaRequests extends Middleware
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'projects' => $projects,
             'currentProject' => $currentProject,
+            'databaseTables' => $databaseTables,
         ];
     }
 }

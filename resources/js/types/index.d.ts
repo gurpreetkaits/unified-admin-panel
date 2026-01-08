@@ -54,6 +54,7 @@ export interface SharedData {
     sidebarOpen: boolean;
     projects: Project[];
     currentProject: Project | null;
+    databaseTables: string[];
     [key: string]: unknown;
 }
 

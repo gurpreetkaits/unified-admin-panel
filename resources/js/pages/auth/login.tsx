@@ -8,16 +8,19 @@ import { Spinner } from '@/components/ui/spinner';
 import AuthLayout from '@/layouts/auth-layout';
 import { store } from '@/routes/login';
 import { request } from '@/routes/password';
+import { register } from '@/routes';
 import { Form, Head } from '@inertiajs/react';
 
 interface LoginProps {
     status?: string;
     canResetPassword: boolean;
+    canRegister: boolean;
 }
 
 export default function Login({
     status,
     canResetPassword,
+    canRegister,
 }: LoginProps) {
     return (
         <AuthLayout
@@ -94,6 +97,15 @@ export default function Login({
                                 Log in
                             </Button>
                         </div>
+
+                        {canRegister && (
+                            <div className="text-muted-foreground text-center text-sm">
+                                Don't have an account?{' '}
+                                <TextLink href={register()} tabIndex={6}>
+                                    Sign up
+                                </TextLink>
+                            </div>
+                        )}
                     </>
                 )}
             </Form>

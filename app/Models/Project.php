@@ -4,12 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Project extends Model
 {
     use HasFactory;
 
     protected $fillable = [
+        'user_id',
         'name',
         'slug',
         'description',
@@ -42,5 +44,10 @@ class Project extends Model
     public function hasDatabase(): bool
     {
         return ! empty($this->db_host) && ! empty($this->db_database);
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
     }
 }

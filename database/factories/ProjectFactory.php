@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
@@ -20,6 +21,7 @@ class ProjectFactory extends Factory
         $name = fake()->company();
 
         return [
+            'user_id' => User::factory(),
             'name' => $name,
             'slug' => Str::slug($name).'-'.fake()->unique()->numberBetween(1, 10000),
             'description' => fake()->sentence(),
