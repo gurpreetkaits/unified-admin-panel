@@ -94,7 +94,7 @@ export default function TableShow({
     isPinned: initialIsPinned,
     filters,
 }: Props) {
-    const { currentProject } = usePage<SharedData>().props;
+    const { currentProject, permissions } = usePage<SharedData>().props;
     const [isPinned, setIsPinned] = useState(initialIsPinned);
     const [pinning, setPinning] = useState(false);
     const [searchTerm, setSearchTerm] = useState(filters.search ?? '');
@@ -275,23 +275,25 @@ export default function TableShow({
                             </div>
                         </div>
                     </div>
-                    <Button
-                        variant={isPinned ? 'secondary' : 'outline'}
-                        onClick={handleTogglePin}
-                        disabled={pinning}
-                    >
-                        {isPinned ? (
-                            <>
-                                <PinOff className="mr-2 size-4" />
-                                Unpin from Sidebar
-                            </>
-                        ) : (
-                            <>
-                                <Pin className="mr-2 size-4" />
-                                Pin to Sidebar
-                            </>
-                        )}
-                    </Button>
+                    {permissions?.canEditRecords && (
+                        <Button
+                            variant={isPinned ? 'secondary' : 'outline'}
+                            onClick={handleTogglePin}
+                            disabled={pinning}
+                        >
+                            {isPinned ? (
+                                <>
+                                    <PinOff className="mr-2 size-4" />
+                                    Unpin from Sidebar
+                                </>
+                            ) : (
+                                <>
+                                    <Pin className="mr-2 size-4" />
+                                    Pin to Sidebar
+                                </>
+                            )}
+                        </Button>
+                    )}
                 </div>
 
                 {/* Search Bar */}

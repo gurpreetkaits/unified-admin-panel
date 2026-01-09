@@ -42,8 +42,12 @@ class StoreProjectRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'name.required' => 'Please enter a project name.',
+            'name.max' => 'The project name cannot exceed 255 characters.',
+            'slug.required' => 'Please enter a project slug.',
             'slug.regex' => 'The slug must contain only lowercase letters, numbers, and hyphens.',
             'slug.unique' => 'This slug is already taken. Please choose a different one.',
+            'description.max' => 'The description cannot exceed 1000 characters.',
         ];
     }
 }

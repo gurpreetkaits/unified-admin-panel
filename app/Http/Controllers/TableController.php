@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Project;
 use App\Services\ProjectDatabaseService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -259,6 +260,11 @@ class TableController extends Controller
             return response()->json(['success' => false, 'message' => 'No project selected'], 400);
         }
 
+        // Check if user can edit records
+        if (! $request->user()->can('editRecords', $project)) {
+            return response()->json(['success' => false, 'message' => 'You do not have permission to edit records'], 403);
+        }
+
         if (! $project->hasDatabase()) {
             return response()->json(['success' => false, 'message' => 'No database configured'], 400);
         }
@@ -304,12 +310,25 @@ class TableController extends Controller
         }
     }
 
-    public function pin(Request $request, string $table): JsonResponse
+    public function pin(Request $request, string $table): JsonResponse|RedirectResponse
     {
         $project = Project::find($request->session()->get('current_project_id'));
 
         if (! $project) {
-            return response()->json(['success' => false, 'message' => 'No project selected'], 400);
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'No project selected'], 400);
+            }
+
+            return back()->withErrors(['error' => 'No project selected']);
+        }
+
+        // Check if user can edit records (pinning is an edit action)
+        if (! $request->user()->can('editRecords', $project)) {
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'You do not have permission to pin tables'], 403);
+            }
+
+            return back()->withErrors(['error' => 'You do not have permission to pin tables']);
         }
 
         // Validate table exists to prevent storing malicious table names
@@ -320,8 +339,11 @@ class TableController extends Controller
                 $availableTables = $dbService->getTables()->toArray();
                 if (! in_array($table, $availableTables, true)) {
                     $dbService->disconnect();
+                    if ($request->wantsJson()) {
+                        return response()->json(['success' => false, 'message' => 'Table not found'], 404);
+                    }
 
-                    return response()->json(['success' => false, 'message' => 'Table not found'], 404);
+                    return back()->withErrors(['error' => 'Table not found']);
                 }
             }
             $dbService->disconnect();
@@ -334,15 +356,32 @@ class TableController extends Controller
             $project->update(['pinned_tables' => $pinnedTables]);
         }
 
-        return response()->json(['success' => true, 'pinned_tables' => $pinnedTables]);
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'pinned_tables' => $pinnedTables]);
+        }
+
+        return back();
     }
 
-    public function unpin(Request $request, string $table): JsonResponse
+    public function unpin(Request $request, string $table): JsonResponse|RedirectResponse
     {
         $project = Project::find($request->session()->get('current_project_id'));
 
         if (! $project) {
-            return response()->json(['success' => false, 'message' => 'No project selected'], 400);
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'No project selected'], 400);
+            }
+
+            return back()->withErrors(['error' => 'No project selected']);
+        }
+
+        // Check if user can edit records (unpinning is an edit action)
+        if (! $request->user()->can('editRecords', $project)) {
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'You do not have permission to unpin tables'], 403);
+            }
+
+            return back()->withErrors(['error' => 'You do not have permission to unpin tables']);
         }
 
         $pinnedTables = $project->pinned_tables ?? [];
@@ -350,6 +389,10 @@ class TableController extends Controller
 
         $project->update(['pinned_tables' => $pinnedTables]);
 
-        return response()->json(['success' => true, 'pinned_tables' => $pinnedTables]);
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'pinned_tables' => $pinnedTables]);
+        }
+
+        return back();
     }
 }

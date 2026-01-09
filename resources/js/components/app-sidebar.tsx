@@ -1,5 +1,4 @@
 import { NavUser } from '@/components/nav-user';
-import { ProjectSwitcher } from '@/components/project-switcher';
 import { Input } from '@/components/ui/input';
 import {
     Sidebar,
@@ -16,14 +15,20 @@ import {
 } from '@/components/ui/sidebar';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { index as tablesIndex } from '@/actions/App/Http/Controllers/TableController';
+import {
+    index as tablesIndex,
+    pin as pinTable,
+    unpin as unpinTable,
+} from '@/actions/App/Http/Controllers/TableController';
+import { index as projectsIndex } from '@/actions/App/Http/Controllers/ProjectController';
 import { type SharedData } from '@/types';
-import { router, usePage } from '@inertiajs/react';
-import { Pin, Search, Table2 } from 'lucide-react';
+import { Link, router, usePage } from '@inertiajs/react';
+import { FolderKanban, Layers, Pin, PinOff, Search, Users } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 export function AppSidebar() {
-    const { currentProject, databaseTables } = usePage<SharedData>().props;
+    const { currentProject, currentProjectRole, databaseTables, permissions } =
+        usePage<SharedData>().props;
     const pinnedTables = currentProject?.pinned_tables ?? [];
 
     const [pinnedOnly, setPinnedOnly] = useState(false);
@@ -40,10 +45,7 @@ export function AppSidebar() {
         return tables.filter((table) => table.toLowerCase().includes(query));
     }, [pinnedOnly, pinnedTables, databaseTables, searchQuery]);
 
-    const handleTableClick = (
-        e: React.MouseEvent,
-        tableName: string,
-    ) => {
+    const handleTableClick = (e: React.MouseEvent, tableName: string) => {
         e.preventDefault();
 
         // Check if we're already on the tables page
@@ -60,7 +62,20 @@ export function AppSidebar() {
             );
         } else {
             // Navigate to tables page with the tab parameter
-            router.visit(`${tablesIndex().url}?tab=${encodeURIComponent(tableName)}`);
+            router.visit(
+                `${tablesIndex().url}?tab=${encodeURIComponent(tableName)}`,
+            );
+        }
+    };
+
+    const handlePinToggle = (e: React.MouseEvent, tableName: string, isPinned: boolean) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (isPinned) {
+            router.post(unpinTable.url(tableName), {}, { preserveScroll: true });
+        } else {
+            router.post(pinTable.url(tableName), {}, { preserveScroll: true });
         }
     };
 
@@ -69,14 +84,55 @@ export function AppSidebar() {
     return (
         <Sidebar collapsible="icon" variant="inset">
             <SidebarHeader>
-                <ProjectSwitcher />
+                <div className="flex items-center gap-2 px-2 py-1.5">
+                    <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
+                        <FolderKanban className="size-4" />
+                    </div>
+                    <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
+                        <span className="truncate font-semibold">
+                            {currentProject?.name ?? 'No Project'}
+                        </span>
+                        {currentProjectRole && (
+                            <span className="text-muted-foreground truncate text-xs capitalize">
+                                {currentProjectRole}
+                            </span>
+                        )}
+                    </div>
+                </div>
+
+                {/* Navigation links */}
+                <SidebarMenu className="group-data-[collapsible=icon]:hidden">
+                    <SidebarMenuItem>
+                        <SidebarMenuButton asChild size="sm">
+                            <Link href={projectsIndex().url}>
+                                <Layers className="size-4" />
+                                <span>All Projects</span>
+                            </Link>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    {/* Team link - shown for users who can manage team */}
+                    {permissions?.canManageTeam && currentProject && (
+                        <SidebarMenuItem>
+                            <SidebarMenuButton asChild size="sm">
+                                <Link
+                                    href={`/projects/${currentProject.id}/team`}
+                                >
+                                    <Users className="size-4" />
+                                    <span>Manage Team</span>
+                                </Link>
+                            </SidebarMenuButton>
+                        </SidebarMenuItem>
+                    )}
+                </SidebarMenu>
             </SidebarHeader>
 
             <SidebarContent>
                 {hasDatabase && (
                     <SidebarGroup className="flex-1">
                         <div className="flex items-center justify-between px-2">
-                            <SidebarGroupLabel className="p-0">Tables</SidebarGroupLabel>
+                            <SidebarGroupLabel className="p-0">
+                                Tables
+                            </SidebarGroupLabel>
                             <div className="flex items-center gap-1.5 group-data-[collapsible=icon]:hidden">
                                 <Label
                                     htmlFor="pinned-toggle"
@@ -112,26 +168,54 @@ export function AppSidebar() {
                                         {pinnedOnly
                                             ? 'No pinned tables'
                                             : searchQuery
-                                                ? 'No tables found'
-                                                : 'No tables available'
-                                        }
+                                              ? 'No tables found'
+                                              : 'No tables available'}
                                     </div>
                                 ) : (
                                     tablesToShow.map((tableName) => {
-                                        const isPinned = pinnedTables.includes(tableName);
+                                        const isPinned =
+                                            pinnedTables.includes(tableName);
                                         return (
                                             <SidebarMenuItem key={tableName}>
                                                 <SidebarMenuButton asChild>
                                                     <a
                                                         href={`${tablesIndex().url}?tab=${encodeURIComponent(tableName)}`}
-                                                        onClick={(e) => handleTableClick(e, tableName)}
+                                                        onClick={(e) =>
+                                                            handleTableClick(
+                                                                e,
+                                                                tableName,
+                                                            )
+                                                        }
                                                         className="group/item"
                                                     >
-                                                        <Table2 className="size-4" />
-                                                        <span className="truncate">{tableName}</span>
-                                                        {isPinned && !pinnedOnly && (
-                                                            <Pin className="text-muted-foreground ml-auto size-3" />
-                                                        )}
+                                                        <span className="truncate">
+                                                            {tableName}
+                                                        </span>
+                                                        <button
+                                                            onClick={(e) =>
+                                                                handlePinToggle(
+                                                                    e,
+                                                                    tableName,
+                                                                    isPinned,
+                                                                )
+                                                            }
+                                                            className={`ml-auto rounded p-0.5 transition-opacity ${
+                                                                isPinned
+                                                                    ? 'text-primary opacity-100'
+                                                                    : 'text-muted-foreground opacity-0 hover:text-foreground group-hover/item:opacity-100'
+                                                            }`}
+                                                            title={
+                                                                isPinned
+                                                                    ? 'Unpin table'
+                                                                    : 'Pin table'
+                                                            }
+                                                        >
+                                                            {isPinned ? (
+                                                                <Pin className="size-3.5" />
+                                                            ) : (
+                                                                <PinOff className="size-3.5" />
+                                                            )}
+                                                        </button>
                                                     </a>
                                                 </SidebarMenuButton>
                                             </SidebarMenuItem>

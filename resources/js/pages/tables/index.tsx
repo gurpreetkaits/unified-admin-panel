@@ -61,7 +61,7 @@ function TablesContent({
     filters,
     openTab: initialOpenTab,
 }: Props) {
-    const { currentProject } = usePage<SharedData>().props;
+    const { currentProject, permissions } = usePage<SharedData>().props;
     const { openTab, tabs } = useTableTabs();
     const [pinnedTables, setPinnedTables] = useState<string[]>(
         initialPinnedTables,
@@ -301,27 +301,29 @@ function TablesContent({
                                                 {table.row_count.toLocaleString()}
                                             </td>
                                             <td className="px-3 py-2 text-right">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="size-7 p-0 opacity-0 group-hover:opacity-100"
-                                                    onClick={(e) =>
-                                                        handleTogglePin(
-                                                            e,
-                                                            table.name,
-                                                            isPinned,
-                                                        )
-                                                    }
-                                                    disabled={
-                                                        pinning === table.name
-                                                    }
-                                                >
-                                                    {isPinned ? (
-                                                        <PinOff className="size-3.5" />
-                                                    ) : (
-                                                        <Pin className="size-3.5" />
-                                                    )}
-                                                </Button>
+                                                {permissions?.canEditRecords && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="size-7 p-0 opacity-0 group-hover:opacity-100"
+                                                        onClick={(e) =>
+                                                            handleTogglePin(
+                                                                e,
+                                                                table.name,
+                                                                isPinned,
+                                                            )
+                                                        }
+                                                        disabled={
+                                                            pinning === table.name
+                                                        }
+                                                    >
+                                                        {isPinned ? (
+                                                            <PinOff className="size-3.5" />
+                                                        ) : (
+                                                            <Pin className="size-3.5" />
+                                                        )}
+                                                    </Button>
+                                                )}
                                             </td>
                                         </tr>
                                     );

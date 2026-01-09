@@ -2,6 +2,8 @@ import { useTableTabs } from '@/contexts/table-tabs-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { data as tableData, update as updateRecord } from '@/actions/App/Http/Controllers/TableController';
+import { type SharedData } from '@/types';
+import { usePage } from '@inertiajs/react';
 import {
     ArrowDown,
     ArrowUp,
@@ -101,6 +103,7 @@ function RecordSidebar({
     onClose,
     onOpenTable,
     onRecordUpdated,
+    canEdit,
 }: {
     record: Record<string, unknown>;
     columns: string[];
@@ -110,6 +113,7 @@ function RecordSidebar({
     onClose: () => void;
     onOpenTable: (name: string) => void;
     onRecordUpdated: (updatedRecord: Record<string, unknown>) => void;
+    canEdit: boolean;
 }) {
     const [copied, setCopied] = useState(false);
     const [editedValues, setEditedValues] = useState<Record<string, string>>(() => {
@@ -343,25 +347,27 @@ function RecordSidebar({
             <div className="flex shrink-0 items-center justify-between border-b border-sidebar-border/70 px-3 py-2 dark:border-sidebar-border">
                 <span className="text-sm font-medium">Record Details</span>
                 <div className="flex items-center gap-1">
-                    <Button
-                        variant={saveSuccess ? 'default' : 'ghost'}
-                        size="sm"
-                        className="h-7 gap-1 px-2 text-xs"
-                        onClick={handleSave}
-                        disabled={isSaving}
-                    >
-                        {saveSuccess ? (
-                            <>
-                                <Check className="size-3" />
-                                Saved
-                            </>
-                        ) : (
-                            <>
-                                <Save className="size-3" />
-                                {isSaving ? 'Saving...' : 'Save'}
-                            </>
-                        )}
-                    </Button>
+                    {canEdit && (
+                        <Button
+                            variant={saveSuccess ? 'default' : 'ghost'}
+                            size="sm"
+                            className="h-7 gap-1 px-2 text-xs"
+                            onClick={handleSave}
+                            disabled={isSaving}
+                        >
+                            {saveSuccess ? (
+                                <>
+                                    <Check className="size-3" />
+                                    Saved
+                                </>
+                            ) : (
+                                <>
+                                    <Save className="size-3" />
+                                    {isSaving ? 'Saving...' : 'Save'}
+                                </>
+                            )}
+                        </Button>
+                    )}
                     <Button
                         variant="ghost"
                         size="sm"
@@ -399,7 +405,11 @@ function RecordSidebar({
             )}
 
             <div className="shrink-0 border-b border-sidebar-border/70 bg-muted/30 px-3 py-1 text-xs text-muted-foreground dark:border-sidebar-border">
-                Press <kbd className="rounded bg-muted px-1 font-mono">Ctrl+S</kbd> to save • Right-click for options
+                {canEdit ? (
+                    <>Press <kbd className="rounded bg-muted px-1 font-mono">Ctrl+S</kbd> to save • Right-click for options</>
+                ) : (
+                    <>View only mode • Right-click to copy</>
+                )}
             </div>
 
             {/* Content */}
@@ -440,7 +450,7 @@ function RecordSidebar({
                                         )}
                                     </span>
                                 </div>
-                                {isPrimaryKey ? (
+                                {isPrimaryKey || !canEdit ? (
                                     <div className="text-sm text-muted-foreground">
                                         {displayValue}
                                     </div>
@@ -500,33 +510,37 @@ function RecordSidebar({
                         <Copy className="size-4" />
                         Copy All Fields
                     </button>
-                    <div className="my-1 border-t border-sidebar-border/70 dark:border-sidebar-border" />
-                    {contextMenu.column !== primaryKey && (
+                    {canEdit && (
                         <>
+                            <div className="my-1 border-t border-sidebar-border/70 dark:border-sidebar-border" />
+                            {contextMenu.column !== primaryKey && (
+                                <>
+                                    <button
+                                        onClick={() => handleSetNull(contextMenu.column!)}
+                                        className="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-muted"
+                                    >
+                                        <X className="size-4" />
+                                        Set to NULL
+                                    </button>
+                                    <button
+                                        onClick={() => handleResetField(contextMenu.column!)}
+                                        className="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-muted"
+                                    >
+                                        <RefreshCw className="size-4" />
+                                        Reset to Original
+                                    </button>
+                                </>
+                            )}
+                            <div className="my-1 border-t border-sidebar-border/70 dark:border-sidebar-border" />
                             <button
-                                onClick={() => handleSetNull(contextMenu.column!)}
+                                onClick={handleSave}
                                 className="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-muted"
                             >
-                                <X className="size-4" />
-                                Set to NULL
-                            </button>
-                            <button
-                                onClick={() => handleResetField(contextMenu.column!)}
-                                className="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-muted"
-                            >
-                                <RefreshCw className="size-4" />
-                                Reset to Original
+                                <Save className="size-4" />
+                                Save Changes
                             </button>
                         </>
                     )}
-                    <div className="my-1 border-t border-sidebar-border/70 dark:border-sidebar-border" />
-                    <button
-                        onClick={handleSave}
-                        className="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-muted"
-                    >
-                        <Save className="size-4" />
-                        Save Changes
-                    </button>
                 </div>
             )}
         </div>
@@ -537,10 +551,12 @@ function TableContent({
     tableName,
     isActive,
     onOpenTable,
+    canEdit,
 }: {
     tableName: string;
     isActive: boolean;
     onOpenTable: (name: string) => void;
+    canEdit: boolean;
 }) {
     const [state, setState] = useState<TabState>({
         data: null,
@@ -854,6 +870,7 @@ function TableContent({
                     primaryKey={primaryKey}
                     onClose={() => setSelectedRecord(null)}
                     onOpenTable={onOpenTable}
+                    canEdit={canEdit}
                     onRecordUpdated={(updatedRecord) => {
                         setSelectedRecord(updatedRecord);
                         // Also update the record in the data list
@@ -884,6 +901,8 @@ function TableContent({
 
 export function TableTabContent() {
     const { tabs, activeTabId, openTab } = useTableTabs();
+    const { permissions } = usePage<SharedData>().props;
+    const canEdit = permissions?.canEditRecords ?? false;
 
     if (tabs.length === 0) {
         return (
@@ -910,6 +929,7 @@ export function TableTabContent() {
                             tableName={tab.name}
                             isActive={isActive}
                             onOpenTable={openTab}
+                            canEdit={canEdit}
                         />
                     </div>
                 );

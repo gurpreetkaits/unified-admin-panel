@@ -13,6 +13,23 @@ use Inertia\Response;
 
 class ProjectController extends Controller
 {
+    public function index(Request $request): Response
+    {
+        $projects = $request->user()->accessibleProjects()->get();
+
+        return Inertia::render('projects/index', [
+            'projects' => $projects->map(fn (Project $project) => [
+                'id' => $project->id,
+                'name' => $project->name,
+                'slug' => $project->slug,
+                'description' => $project->description,
+                'is_connected' => $project->is_connected,
+                'is_owner' => $project->user_id === $request->user()->id,
+                'created_at' => $project->created_at,
+            ]),
+        ]);
+    }
+
     public function create(): Response
     {
         return Inertia::render('projects/create');
@@ -21,6 +38,7 @@ class ProjectController extends Controller
     public function store(StoreProjectRequest $request): RedirectResponse
     {
         $data = $request->validated();
+        $data['user_id'] = $request->user()->id;
 
         // Test connection if database details provided
         if (! empty($data['db_host']) && ! empty($data['db_database'])) {
@@ -36,7 +54,7 @@ class ProjectController extends Controller
 
         $request->session()->put('current_project_id', $project->id);
 
-        return redirect()->route('dashboard')->with('success', 'Project created successfully.');
+        return redirect()->route('tables.index')->with('success', 'Project created successfully.');
     }
 
     public function switch(Request $request, Project $project): RedirectResponse

@@ -32,6 +32,33 @@ export interface Project {
     updated_at: string;
 }
 
+export type ProjectRoleValue = 'owner' | 'admin' | 'editor' | 'viewer';
+
+export interface ProjectMember {
+    id: number;
+    user: Pick<User, 'id' | 'name' | 'email'>;
+    role: ProjectRoleValue;
+    role_label: string;
+    accepted_at: string | null;
+}
+
+export interface ProjectInvitation {
+    id: number;
+    email: string;
+    role: ProjectRoleValue;
+    role_label: string;
+    expires_at: string;
+    additional_projects?: Array<{ id: number; name: string }>;
+}
+
+export interface ProjectPermissions {
+    canViewTables: boolean;
+    canEditRecords: boolean;
+    canDeleteRecords: boolean;
+    canManageSettings: boolean;
+    canManageTeam: boolean;
+}
+
 export interface PaginatedData<T> {
     data: T[];
     current_page: number;
@@ -54,7 +81,9 @@ export interface SharedData {
     sidebarOpen: boolean;
     projects: Project[];
     currentProject: Project | null;
+    currentProjectRole: ProjectRoleValue | null;
     databaseTables: string[];
+    permissions: ProjectPermissions | null;
     [key: string]: unknown;
 }
 

@@ -2,7 +2,14 @@
 
 namespace App\Providers;
 
+use App\Http\Responses\LoginResponse;
+use App\Http\Responses\RegisterResponse;
+use App\Models\Project;
+use App\Policies\ProjectPolicy;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Fortify\Contracts\LoginResponse as LoginResponseContract;
+use Laravel\Fortify\Contracts\RegisterResponse as RegisterResponseContract;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -11,7 +18,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(LoginResponseContract::class, LoginResponse::class);
+        $this->app->singleton(RegisterResponseContract::class, RegisterResponse::class);
     }
 
     /**
@@ -19,6 +27,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        Gate::policy(Project::class, ProjectPolicy::class);
     }
 }

@@ -94,7 +94,7 @@ describe('tables index', function () {
     test('returns pinned tables from project', function () {
         $project = Project::factory()
             ->withPinnedTables(['users', 'posts'])
-            ->create();
+            ->create(['user_id' => $this->user->id]);
 
         $this->actingAs($this->user)
             ->withSession(['current_project_id' => $project->id])
@@ -168,7 +168,7 @@ describe('pin table', function () {
     });
 
     test('can pin a table when project has no database configured', function () {
-        $project = Project::factory()->create();
+        $project = Project::factory()->create(['user_id' => $this->user->id]);
 
         $this->actingAs($this->user)
             ->withSession(['current_project_id' => $project->id])
@@ -183,7 +183,7 @@ describe('pin table', function () {
     test('does not duplicate pinned table', function () {
         $project = Project::factory()
             ->withPinnedTables(['users'])
-            ->create();
+            ->create(['user_id' => $this->user->id]);
 
         $this->actingAs($this->user)
             ->withSession(['current_project_id' => $project->id])
@@ -197,7 +197,7 @@ describe('pin table', function () {
     test('can pin multiple tables', function () {
         $project = Project::factory()
             ->withPinnedTables(['users'])
-            ->create();
+            ->create(['user_id' => $this->user->id]);
 
         $this->actingAs($this->user)
             ->withSession(['current_project_id' => $project->id])
@@ -227,7 +227,7 @@ describe('unpin table', function () {
     test('can unpin a table', function () {
         $project = Project::factory()
             ->withPinnedTables(['users', 'posts'])
-            ->create();
+            ->create(['user_id' => $this->user->id]);
 
         $this->actingAs($this->user)
             ->withSession(['current_project_id' => $project->id])
@@ -243,7 +243,7 @@ describe('unpin table', function () {
     test('unpinning non-pinned table is idempotent', function () {
         $project = Project::factory()
             ->withPinnedTables(['posts'])
-            ->create();
+            ->create(['user_id' => $this->user->id]);
 
         $this->actingAs($this->user)
             ->withSession(['current_project_id' => $project->id])
@@ -256,7 +256,7 @@ describe('unpin table', function () {
     test('can unpin all tables', function () {
         $project = Project::factory()
             ->withPinnedTables(['users'])
-            ->create();
+            ->create(['user_id' => $this->user->id]);
 
         $this->actingAs($this->user)
             ->withSession(['current_project_id' => $project->id])
@@ -319,7 +319,7 @@ describe('table update endpoint', function () {
     });
 
     test('returns error when project has no database configured', function () {
-        $project = Project::factory()->create();
+        $project = Project::factory()->create(['user_id' => $this->user->id]);
 
         $this->actingAs($this->user)
             ->withSession(['current_project_id' => $project->id])

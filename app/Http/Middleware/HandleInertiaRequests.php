@@ -40,15 +40,37 @@ class HandleInertiaRequests extends Middleware
     {
         [$message, $author] = str(Inspiring::quotes()->random())->explode('-');
 
-        $projects = Project::all();
+        $user = $request->user();
+
+        // Get accessible projects (owned + member of)
+        $accessibleProjects = $user
+            ? $user->accessibleProjects()->get()
+            : collect();
+
         $currentProjectId = $request->session()->get('current_project_id');
         $currentProject = $currentProjectId
-            ? $projects->firstWhere('id', $currentProjectId)
-            : $projects->first();
+            ? $accessibleProjects->firstWhere('id', $currentProjectId)
+            : $accessibleProjects->first();
+
+        // Ensure current project is accessible
+        if ($currentProjectId && $currentProject === null) {
+            $currentProject = $accessibleProjects->first();
+            if ($currentProject) {
+                $request->session()->put('current_project_id', $currentProject->id);
+            } else {
+                $request->session()->forget('current_project_id');
+            }
+        }
 
         // Set the current project in session if not set
         if (! $currentProjectId && $currentProject) {
             $request->session()->put('current_project_id', $currentProject->id);
+        }
+
+        // Get user's role for current project
+        $currentProjectRole = null;
+        if ($currentProject && $user) {
+            $currentProjectRole = $currentProject->getMemberRole($user)?->value;
         }
 
         // Get database tables for sidebar
@@ -62,17 +84,31 @@ class HandleInertiaRequests extends Middleware
             $dbService->disconnect();
         }
 
+        // Get permissions for current project
+        $permissions = null;
+        if ($currentProject && $user) {
+            $permissions = [
+                'canViewTables' => $user->can('viewTables', $currentProject),
+                'canEditRecords' => $user->can('editRecords', $currentProject),
+                'canDeleteRecords' => $user->can('deleteRecords', $currentProject),
+                'canManageSettings' => $user->can('manageSettings', $currentProject),
+                'canManageTeam' => $user->can('manageTeam', $currentProject),
+            ];
+        }
+
         return [
             ...parent::share($request),
             'name' => config('app.name'),
             'quote' => ['message' => trim($message), 'author' => trim($author)],
             'auth' => [
-                'user' => $request->user(),
+                'user' => $user,
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
-            'projects' => $projects,
+            'projects' => $accessibleProjects,
             'currentProject' => $currentProject,
+            'currentProjectRole' => $currentProjectRole,
             'databaseTables' => $databaseTables,
+            'permissions' => $permissions,
         ];
     }
 }
